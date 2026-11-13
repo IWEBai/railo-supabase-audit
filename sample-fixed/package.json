@@ -1,0 +1,12 @@
+{
+  "name": "tripnest-sample",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Deliberately insecure sample app for Railo's Supabase audit. Do not deploy.",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

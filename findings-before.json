@@ -1,0 +1,106 @@
+[
+  {
+    "id": "SB001",
+    "severity": "critical",
+    "title": "Row-level security is off on table `bookings`",
+    "location": "supabase/migrations/20261113000001_init.sql:45",
+    "detail": "With RLS off, anyone holding the public anon key can read, insert, update and delete every row, including passport_number.",
+    "fix": "`alter table public.bookings enable row level security;` then add one policy per action that limits rows to their owner (for example `using (auth.uid() = owner_id)`)."
+  },
+  {
+    "id": "SB004",
+    "severity": "critical",
+    "title": "Users can change privileged column(s) role on `profiles`",
+    "location": "supabase/migrations/20261113000001_init.sql:22",
+    "detail": "Policy \"Users can update their own profile\" allows updates and no column-level restriction exists, so a user can update their own `role` (for example make themselves an admin).",
+    "fix": "`revoke update on public.profiles from authenticated, anon;` then `grant update (<safe columns>) on public.profiles to authenticated;`."
+  },
+  {
+    "id": "SB005",
+    "severity": "critical",
+    "title": "Policy \"Admins can delete messages\" depends on `is_admin()`, which trusts user-editable metadata",
+    "location": "supabase/migrations/20261113000001_init.sql:85",
+    "detail": "`is_admin()` reads `user_metadata`, which any user can set for themselves with supabase.auth.updateUser, so anyone can pass this check.",
+    "fix": "Make `is_admin()` read `app_metadata` or a server-controlled role column instead."
+  },
+  {
+    "id": "SB010",
+    "severity": "critical",
+    "title": "The service-role key is used in code that ships to the browser",
+    "location": ".env.example:5",
+    "detail": "Anything in frontend code or in a VITE_/NEXT_PUBLIC_-style variable is bundled into the public JavaScript, so every visitor gets a key that bypasses all row-level security.",
+    "fix": "Remove the service-role client from the frontend. Do admin work in an edge function that checks the caller's JWT and role, and rotate the key if it was ever deployed."
+  },
+  {
+    "id": "SB010",
+    "severity": "critical",
+    "title": "The service-role key is used in code that ships to the browser",
+    "location": "src/integrations/supabase/admin.ts:6",
+    "detail": "Anything in frontend code or in a VITE_/NEXT_PUBLIC_-style variable is bundled into the public JavaScript, so every visitor gets a key that bypasses all row-level security.",
+    "fix": "Remove the service-role client from the frontend. Do admin work in an edge function that checks the caller's JWT and role, and rotate the key if it was ever deployed."
+  },
+  {
+    "id": "SB012",
+    "severity": "critical",
+    "title": "Edge function `export-bookings` accepts calls without a login",
+    "location": "supabase/config.toml:428",
+    "detail": "`verify_jwt = false` lets anyone on the internet call it, and it uses the service-role key without checking who is calling, so it exposes data that row-level security would block.",
+    "fix": "Remove `verify_jwt = false`, or check the caller inside the function with `supabase.auth.getUser()` before using the service-role client."
+  },
+  {
+    "id": "SB002",
+    "severity": "high",
+    "title": "Policy \"Profiles are viewable by everyone\" lets anyone with the anon key read every row of `profiles`",
+    "location": "supabase/migrations/20261113000001_init.sql:18",
+    "detail": "`using (true)` returns all rows to anyone with the anon key, including email, phone.",
+    "fix": "Replace `true` with an ownership check, e.g. `using (auth.uid() = id)`, or expose only non-sensitive columns through a view."
+  },
+  {
+    "id": "SB002",
+    "severity": "high",
+    "title": "Policy \"Signed-in users can read messages\" lets every signed-in user read every row of `messages`",
+    "location": "supabase/migrations/20261113000001_init.sql:66",
+    "detail": "`using (true)` returns all rows to every signed-in user. Most apps let anyone sign up, so 'signed-in' is not a real boundary.",
+    "fix": "Replace `true` with an ownership check, e.g. `using (auth.uid() = id)`, or expose only non-sensitive columns through a view."
+  },
+  {
+    "id": "SB003",
+    "severity": "high",
+    "title": "Policy \"Signed-in users can send messages\" lets every signed-in user write any row into `messages`",
+    "location": "supabase/migrations/20261113000001_init.sql:71",
+    "detail": "`with check (true)` accepts any values, so a user can create or change rows on behalf of someone else (for example setting another user's id as the sender).",
+    "fix": "Check ownership in `with check`, e.g. `with check (auth.uid() = sender_id)`."
+  },
+  {
+    "id": "SB007",
+    "severity": "high",
+    "title": "Security-definer function `advisor_revenue` can be called by anyone and skips row-level security",
+    "location": "supabase/migrations/20261113000001_init.sql:91",
+    "detail": "Functions in the public schema are callable through the API (`/rest/v1/rpc/...`) by anon and signed-in users. This one runs as its owner, bypasses RLS and does not check who is calling.",
+    "fix": "Check the caller inside the function (e.g. compare the argument with `auth.uid()`), or `revoke execute on function public.advisor_revenue from public, anon, authenticated;`."
+  },
+  {
+    "id": "SB008",
+    "severity": "high",
+    "title": "Storage bucket `passports` is public",
+    "location": "supabase/migrations/20261113000001_init.sql:100",
+    "detail": "Every file in a public bucket can be downloaded by anyone who has or guesses its URL; no policy applies.",
+    "fix": "`update storage.buckets set public = false where id = 'passports';` and add storage policies that limit each user to their own folder."
+  },
+  {
+    "id": "SB006",
+    "severity": "medium",
+    "title": "Security-definer function `advisor_revenue` has no fixed search_path",
+    "location": "supabase/migrations/20261113000001_init.sql:91",
+    "detail": "A security-definer function runs with its owner's rights; without `set search_path` it can be tricked into using objects from another schema.",
+    "fix": "Add `set search_path = ''` and schema-qualify every table in the body."
+  },
+  {
+    "id": "SB011",
+    "severity": "medium",
+    "title": "Admin access is decided in the browser from user-editable metadata",
+    "location": "src/pages/AdminDashboard.tsx:12",
+    "detail": "Hiding a page in the frontend does not protect its data, and `user_metadata` can be set by the user.",
+    "fix": "Enforce admin access in the database (policies) or in an edge function, from `app_metadata`."
+  }
+]

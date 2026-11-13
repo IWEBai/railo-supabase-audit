@@ -1,0 +1,80 @@
+[
+  {
+    "kind": "attack",
+    "check": "Visitor with only the public key reads users' emails and phone numbers",
+    "result": "EXPOSED",
+    "evidence": "3 profile(s) returned"
+  },
+  {
+    "kind": "attack",
+    "check": "Visitor with only the public key reads passport numbers from bookings",
+    "result": "EXPOSED",
+    "evidence": "1 passport number(s) returned"
+  },
+  {
+    "kind": "attack",
+    "check": "Visitor reads an advisor's revenue through an RPC function",
+    "result": "EXPOSED",
+    "evidence": "HTTP 200, returned 245000"
+  },
+  {
+    "kind": "attack",
+    "check": "Visitor downloads a client's passport scan by URL",
+    "result": "EXPOSED",
+    "evidence": "HTTP 200"
+  },
+  {
+    "kind": "attack",
+    "check": "A stranger who signs up reads other people's messages",
+    "result": "EXPOSED",
+    "evidence": "1 message(s) returned"
+  },
+  {
+    "kind": "attack",
+    "check": "A stranger posts a message that appears to come from the advisor",
+    "result": "EXPOSED",
+    "evidence": "HTTP 201"
+  },
+  {
+    "kind": "attack",
+    "check": "A stranger makes themselves an admin by editing their own profile",
+    "result": "EXPOSED",
+    "evidence": "role is now admin"
+  },
+  {
+    "kind": "attack",
+    "check": "A stranger sets is_admin on their own account and deletes the advisor's message",
+    "result": "EXPOSED",
+    "evidence": "message deleted"
+  },
+  {
+    "kind": "legit",
+    "check": "Ben (client) sees his own booking",
+    "result": "WORKS",
+    "evidence": "1 booking(s)"
+  },
+  {
+    "kind": "legit",
+    "check": "Ava (advisor) sees her client's booking",
+    "result": "WORKS",
+    "evidence": "1 booking(s)"
+  },
+  {
+    "kind": "legit",
+    "check": "Ava sends a message on her own booking",
+    "result": "WORKS",
+    "evidence": "HTTP 201"
+  },
+  {
+    "kind": "legit",
+    "check": "Ben updates his own phone number",
+    "result": "WORKS",
+    "evidence": "phone is +1 555 0199"
+  },
+  {
+    "kind": "legit",
+    "check": "Ben downloads his own passport scan",
+    "result": "WORKS",
+    "evidence": "HTTP 200"
+  }
+]

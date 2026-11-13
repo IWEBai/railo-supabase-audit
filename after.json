@@ -1,0 +1,80 @@
+[
+  {
+    "kind": "attack",
+    "check": "Visitor with only the public key reads users' emails and phone numbers",
+    "result": "BLOCKED",
+    "evidence": "0 profile(s) returned"
+  },
+  {
+    "kind": "attack",
+    "check": "Visitor with only the public key reads passport numbers from bookings",
+    "result": "BLOCKED",
+    "evidence": "0 passport number(s) returned"
+  },
+  {
+    "kind": "attack",
+    "check": "Visitor reads an advisor's revenue through an RPC function",
+    "result": "BLOCKED",
+    "evidence": "HTTP 401, returned {'code': '42501', 'details': None, 'hint': None, 'message': '"
+  },
+  {
+    "kind": "attack",
+    "check": "Visitor downloads a client's passport scan by URL",
+    "result": "BLOCKED",
+    "evidence": "HTTP 400"
+  },
+  {
+    "kind": "attack",
+    "check": "A stranger who signs up reads other people's messages",
+    "result": "BLOCKED",
+    "evidence": "0 message(s) returned"
+  },
+  {
+    "kind": "attack",
+    "check": "A stranger posts a message that appears to come from the advisor",
+    "result": "BLOCKED",
+    "evidence": "HTTP 403"
+  },
+  {
+    "kind": "attack",
+    "check": "A stranger makes themselves an admin by editing their own profile",
+    "result": "BLOCKED",
+    "evidence": "role is now client"
+  },
+  {
+    "kind": "attack",
+    "check": "A stranger sets is_admin on their own account and deletes the advisor's message",
+    "result": "BLOCKED",
+    "evidence": "message still there"
+  },
+  {
+    "kind": "legit",
+    "check": "Ben (client) sees his own booking",
+    "result": "WORKS",
+    "evidence": "1 booking(s)"
+  },
+  {
+    "kind": "legit",
+    "check": "Ava (advisor) sees her client's booking",
+    "result": "WORKS",
+    "evidence": "1 booking(s)"
+  },
+  {
+    "kind": "legit",
+    "check": "Ava sends a message on her own booking",
+    "result": "WORKS",
+    "evidence": "HTTP 201"
+  },
+  {
+    "kind": "legit",
+    "check": "Ben updates his own phone number",
+    "result": "WORKS",
+    "evidence": "phone is +1 555 0199"
+  },
+  {
+    "kind": "legit",
+    "check": "Ben downloads his own passport scan",
+    "result": "WORKS",
+    "evidence": "HTTP 200"
+  }
+]
