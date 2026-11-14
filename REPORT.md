@@ -1,9 +1,10 @@
 # Sample audit: TripNest, a Supabase app built the way AI app builders build them
 
 Railo, 13 November 2026. This is a sample report: the app was written by Railo for this audit, in the
-structure Lovable generates (React frontend, Supabase database, storage and an edge function). Every
-mistake in it is one that appears in real audit requests from Lovable and Supabase users. No real
-person's data was used; every name, email and passport number is fake.
+structure Lovable generates (React frontend, Supabase database, storage and an edge function). The
+mistakes in it include ones that Supabase's own documentation warns about: a table without row-level
+security, an access rule that trusts data users can edit, a service-role key in frontend code and a
+public storage bucket. No real person's data was used; every name, email and passport number is fake.
 
 ## Summary
 
