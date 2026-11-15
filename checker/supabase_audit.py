@@ -9,7 +9,7 @@ should not. Standard library only.
     exit code: 0 = no critical/high findings, 1 = at least one, 2 = usage error
 
 It is a static check: it reads files, it never connects to a database. Findings are leads for a
-person to confirm, not proof of exploitability; probe.py confirms the read-access ones live, on a
+person to confirm, not proof of exploitability; `python -m kit probe` tries them on a local copy of a
 project you own or have written permission to test.
 """
 from __future__ import annotations

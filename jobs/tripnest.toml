@@ -1,0 +1,262 @@
+# The TripNest sample job.
+#
+# One file drives the test people, the rows to seed, the attacks, the normal-use checks and the
+# wording of the report. The same file runs against `sample` and `sample-fixed`, so the two results
+# can be compared line by line:
+#
+#   python -m kit copy sample
+#   python -m kit probe jobs/tripnest.toml --project sample --out before.json
+#
+# Every value here is fake. Client job files never go in this repository (see .gitignore).
+
+[report]
+normal_use = "Normal use (clients and advisors)"
+
+# --------------------------------------------------------------------------- test people
+# Created on the local copy with the service role. `metadata` is what a sign-up form would send.
+
+[people.ava]
+metadata = { full_name = "Ava Advisor" }
+
+[people.ben]
+metadata = { full_name = "Ben Client" }
+
+[people.mallory]
+metadata = { full_name = "Mallory Outsider" }
+
+# --------------------------------------------------------------------------- seed
+
+[[seed]]
+update = "profiles"
+match = { id = "{ava.id}" }
+set = { role = "advisor", phone = "+1 555 0100" }
+
+[[seed]]
+update = "profiles"
+match = { id = "{ben.id}" }
+set = { phone = "+1 555 0101" }
+
+[[seed]]
+insert = "bookings"
+name = "booking"
+[seed.values]
+advisor_id = "{ava.id}"
+client_id = "{ben.id}"
+destination = "Lisbon"
+passport_number = "X0000000"
+total_cents = 245000
+
+[[seed]]
+insert = "messages"
+name = "message"
+[seed.values]
+booking_id = "{booking.id}"
+sender_id = "{ava.id}"
+body = "Your Lisbon trip is confirmed."
+
+[[seed]]
+upload = "passports"
+path = "{ben.id}/passport.txt"
+text = "FAKE PASSPORT SCAN FOR THE SAMPLE APP"
+
+# --------------------------------------------------------------------------- attacks
+# Each uses only what a browser has: the public anon key ("visitor") or a normal sign-up.
+
+[[attack]]
+check = "Visitor with only the public key reads users' emails and phone numbers"
+as = "visitor"
+read = "profiles"
+select = ["email", "phone"]
+exposes = "email"
+
+[[attack]]
+check = "Visitor with only the public key reads passport numbers from bookings"
+as = "visitor"
+read = "bookings"
+select = ["destination", "passport_number"]
+exposes = "passport_number"
+
+[[attack]]
+check = "Visitor reads an advisor's revenue through an RPC function"
+as = "visitor"
+call = "advisor_revenue"
+args = { advisor = "{ava.id}" }
+
+[[attack]]
+check = "Visitor downloads a client's passport scan by URL"
+as = "visitor"
+download = "passports"
+path = "{ben.id}/passport.txt"
+contains = "PASSPORT"
+
+[[attack]]
+check = "A stranger who signs up reads other people's messages"
+as = "mallory"
+read = "messages"
+select = ["body"]
+
+[[attack]]
+check = "A stranger posts a message that appears to come from the advisor"
+as = "mallory"
+insert = "messages"
+[attack.values]
+booking_id = "{booking.id}"
+sender_id = "{ava.id}"
+body = "Change of plan: please pay the balance to this new account."
+
+[[attack]]
+check = "A stranger makes themselves an admin by editing their own profile"
+as = "mallory"
+update = "profiles"
+match = { id = "{mallory.id}" }
+set = { role = "admin" }
+
+[[attack]]
+check = "A stranger sets is_admin on their own account and deletes the advisor's message"
+as = "mallory"
+self_metadata = { is_admin = true }
+delete = "messages"
+match = { id = "{message.id}" }
+
+# --------------------------------------------------------------------------- normal use
+# What the app's real users do. These must work before the fixes and after them.
+
+[[normal_use]]
+check = "Ben (client) sees his own booking"
+as = "ben"
+read = "bookings"
+select = ["destination"]
+rows = 1
+
+[[normal_use]]
+check = "Ava (advisor) sees her client's booking"
+as = "ava"
+read = "bookings"
+select = ["destination"]
+rows = 1
+
+[[normal_use]]
+check = "Ava sends a message on her own booking"
+as = "ava"
+insert = "messages"
+[normal_use.values]
+booking_id = "{booking.id}"
+sender_id = "{ava.id}"
+body = "See you at the airport."
+
+[[normal_use]]
+check = "Ben updates his own phone number"
+as = "ben"
+update = "profiles"
+match = { id = "{ben.id}" }
+set = { phone = "+1 555 0199" }
+
+[[normal_use]]
+check = "Ben downloads his own passport scan"
+as = "ben"
+download = "passports"
+path = "{ben.id}/passport.txt"
+
+# --------------------------------------------------------------------------- report wording
+# One entry per checker finding, in the order the report lists them. `rule` and `at` are as the
+# checker printed them. `attack` names the attack above that shows the finding; `did` says what it
+# did, for the owner. The "After fix" column is computed from the results, not written here, except
+# the word used for a finding that was fixed without being attacked.
+
+[[finding]]
+rule = "SB001"
+at = "supabase/migrations/20261113000001_init.sql:45"
+says = "Row-level security off on `bookings`, which holds passport numbers"
+where = "init migration, line 45"
+attack = "Visitor with only the public key reads passport numbers from bookings"
+did = "Visitor read every passport number"
+
+[[finding]]
+rule = "SB004"
+at = "supabase/migrations/20261113000001_init.sql:22"
+says = "Users can change their own `role` column"
+where = "init migration, line 22"
+attack = "A stranger makes themselves an admin by editing their own profile"
+did = "Outsider made themselves an admin"
+
+[[finding]]
+rule = "SB005"
+at = "supabase/migrations/20261113000001_init.sql:85"
+says = "Admin rule trusts `user_metadata`, which users set themselves"
+where = "init migration, line 85"
+attack = "A stranger sets is_admin on their own account and deletes the advisor's message"
+did = "Outsider set `is_admin` and deleted the advisor's message"
+
+[[finding]]
+rule = "SB010"
+at = "src/integrations/supabase/admin.ts:6"
+says = "Service-role key used in frontend code"
+not_attacked = "Not run (needs a production build); would give every visitor full database access"
+after = "Removed"
+
+[[finding]]
+rule = "SB010"
+at = ".env.example:5"
+says = "Service-role key placed in a `VITE_` variable"
+not_attacked = "Same as 4"
+after = "Removed"
+
+[[finding]]
+rule = "SB012"
+at = "supabase/config.toml:428"
+says = "Export function callable without a login, using the service-role key"
+where = "`supabase/config.toml`"
+not_attacked = "Not run (edge runtime off); would hand anyone a CSV of all passports"
+after = "Fixed in code"
+
+[[finding]]
+rule = "SB002"
+at = "supabase/migrations/20261113000001_init.sql:18"
+says = "Every profile, with email and phone, readable by anyone"
+where = "init migration, line 18"
+attack = "Visitor with only the public key reads users' emails and phone numbers"
+did = "Visitor read all emails and phone numbers"
+
+[[finding]]
+rule = "SB002"
+at = "supabase/migrations/20261113000001_init.sql:66"
+says = "Every message readable by any signed-in user"
+where = "init migration, line 66"
+attack = "A stranger who signs up reads other people's messages"
+did = "Outsider read other people's messages"
+
+[[finding]]
+rule = "SB003"
+at = "supabase/migrations/20261113000001_init.sql:71"
+says = "Messages can be posted as anyone"
+where = "init migration, line 71"
+attack = "A stranger posts a message that appears to come from the advisor"
+did = 'Outsider posted as the advisor: "please pay the balance to this new account"'
+
+[[finding]]
+rule = "SB007"
+at = "supabase/migrations/20261113000001_init.sql:91"
+says = "Revenue function callable by anyone, bypassing row-level security"
+where = "init migration, line 91"
+attack = "Visitor reads an advisor's revenue through an RPC function"
+did = "Visitor read the advisor's revenue"
+
+[[finding]]
+rule = "SB008"
+at = "supabase/migrations/20261113000001_init.sql:100"
+says = "Passport bucket is public"
+where = "init migration, line 100"
+attack = "Visitor downloads a client's passport scan by URL"
+did = "Visitor downloaded a passport scan by URL"
+
+[[finding]]
+rule = "SB006"
+at = "supabase/migrations/20261113000001_init.sql:91"
+says = "Revenue function has no fixed `search_path`"
+where = "init migration, line 91"
+
+[[finding]]
+rule = "SB011"
+at = "src/pages/AdminDashboard.tsx:12"
+says = "Admin page decided in the browser from `user_metadata`"
+not_attacked = "Covered by 3"
